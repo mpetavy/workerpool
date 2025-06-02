@@ -35,7 +35,7 @@ func TestWorkerPool(t *testing.T) {
 
 	for range 2 {
 		wg := sync.WaitGroup{}
-		for range 100 {
+		for range 1000 {
 			wg.Add(1)
 			pool.Submit(func() error {
 				defer func() {
