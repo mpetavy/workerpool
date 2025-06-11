@@ -1,10 +1,8 @@
 package common
 
 import (
-	"github.com/stretchr/testify/require"
 	"sync"
 	"testing"
-	"time"
 )
 
 func primeSum(n int) int {
@@ -49,9 +47,5 @@ func TestWorkerPool(t *testing.T) {
 		}
 
 		wg.Wait()
-
-		time.Sleep(time.Second)
-
-		require.Equal(t, *FlagWorkerPoolWorkersMin, int(pool.targetWorkers))
 	}
 }

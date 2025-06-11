@@ -29,15 +29,15 @@ var (
 type WorkerJob func() error
 
 var (
-	currentUsage atomic.Int64
+	CPUUsage atomic.Int64
 )
 
 type WorkerPool struct {
 	mutex          sync.Mutex
-	targetUsage    float64
-	minimumWorkers float64
-	currentWorkers float64
-	targetWorkers  float64
+	targetUsage    int
+	minimumWorkers int
+	currentWorkers int
+	targetWorkers  int
 	jobQueue       chan WorkerJob
 	quit           chan struct{}
 }
@@ -47,7 +47,7 @@ func init() {
 		for {
 			usage := int64(GetCPUUsage())
 
-			currentUsage.Store(usage)
+			CPUUsage.Store(usage)
 
 			fmt.Printf("%d%%\n", usage)
 		}
@@ -57,13 +57,23 @@ func init() {
 func NewWorkerPool() *WorkerPool {
 	wp := &WorkerPool{
 		mutex:          sync.Mutex{},
-		targetUsage:    float64(*FlagWorkerPoolCPULimit),
-		minimumWorkers: float64(*FlagWorkerPoolWorkersMin),
-		currentWorkers: float64(*FlagWorkerPoolWorkersMin),
+		targetUsage:    *FlagWorkerPoolCPULimit,
+		minimumWorkers: *FlagWorkerPoolWorkersMin,
+		currentWorkers: *FlagWorkerPoolWorkersMin,
 		targetWorkers:  0,
 		jobQueue:       make(chan WorkerJob, *FlagWorkerPoolJobLimit),
 		quit:           make(chan struct{}),
 	}
+
+	go func() {
+		for {
+			usage := int64(GetCPUUsage())
+
+			CPUUsage.Store(usage)
+
+			fmt.Printf("%d%%\t%d %d\n", usage, wp.targetWorkers, wp.currentWorkers)
+		}
+	}()
 
 	return wp
 }
@@ -78,9 +88,6 @@ func (workerPool *WorkerPool) adjust() {
 	workerPool.mutex.Lock()
 	defer workerPool.mutex.Unlock()
 
-	usage := currentUsage.Load()
-
-	workerPool.adjustTarget(float64(usage))
 	workerPool.adjustWorkers()
 }
 
@@ -107,26 +114,20 @@ func (workerPool *WorkerPool) controller() {
 	}
 }
 
-func (workerPool *WorkerPool) adjustTarget(usage float64) {
-	if len(workerPool.jobQueue) == 0 {
-		workerPool.targetWorkers = float64(*FlagWorkerPoolWorkersMin)
-		return
-	}
+func (workerPool *WorkerPool) adjustWorkers() {
+	usage := float64(CPUUsage.Load())
 
 	if usage > float64(*FlagWorkerPoolCPULimit) {
 		// Reduce workers proportionally to overshoot
-		workerPool.targetWorkers = workerPool.targetWorkers * float64(*FlagWorkerPoolCPULimit) / usage
+		workerPool.targetWorkers = int(float64(workerPool.targetWorkers) * float64(*FlagWorkerPoolCPULimit) / usage)
 	} else {
 		// Increase workers by 10% (with upper bound)
 		workerPool.targetWorkers = workerPool.targetWorkers + 2
 	}
 
-	// Ensure minimum of 1 worker
-	workerPool.targetWorkers = common.Min(float64(*FlagWorkerPoolWorkersMax), workerPool.targetWorkers)
-	workerPool.targetWorkers = common.Max(float64(*FlagWorkerPoolWorkersMin), workerPool.targetWorkers)
-}
+	// Ensure minimum of worker
+	workerPool.targetWorkers = common.Max(*FlagWorkerPoolWorkersMin, common.Min(*FlagWorkerPoolWorkersMax, workerPool.targetWorkers))
 
-func (workerPool *WorkerPool) adjustWorkers() {
 	for workerPool.currentWorkers < workerPool.targetWorkers {
 		workerPool.currentWorkers++
 
@@ -164,7 +165,7 @@ func (workerPool *WorkerPool) worker() {
 
 func (workerPool *WorkerPool) Debug() {
 	common.Debug("-------------------------------------\n")
-	common.Debug("CPU usage:       %d\n", currentUsage.Load())
+	common.Debug("CPU usage:       %d\n", CPUUsage.Load())
 	common.Debug("Current jobs:    %d\n", len(workerPool.jobQueue))
 	common.Debug("Current workers: %f\n", workerPool.currentWorkers)
 	common.Debug("Target workers:  %f\n", workerPool.targetWorkers)
