@@ -3,7 +3,7 @@ module workerpool
 go 1.24.2
 
 require (
-	github.com/mpetavy/common v1.10.38
+	github.com/mpetavy/common v1.10.42
 	github.com/shirou/gopsutil/v4 v4.25.4
 )
 
@@ -12,7 +12,7 @@ require (
 	github.com/beevik/etree v1.1.4 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/creack/goselect v0.1.2 // indirect
-	github.com/dlclark/regexp2 v1.11.2 // indirect
+	github.com/dlclark/regexp2 v1.11.4 // indirect
 	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
