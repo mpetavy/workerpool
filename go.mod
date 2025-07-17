@@ -3,7 +3,7 @@ module workerpool
 go 1.24.2
 
 require (
-	github.com/mpetavy/common v1.10.45
+	github.com/mpetavy/common v1.10.49
 	github.com/shirou/gopsutil/v4 v4.25.4
 )
 
